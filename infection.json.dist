@@ -1,0 +1,18 @@
+{
+    "timeout": 1,
+    "threads": "max",
+    "source": {
+        "directories": [
+            "src"
+        ]
+    },
+    "timeoutsAsEscaped": true,
+    "minMsi": 100,
+    "minCoveredMsi": 100,
+    "mutators": {
+        "global-ignoreSourceCodeByRegex": [
+            "assert.*"
+        ],
+        "@default": true
+    }
+}

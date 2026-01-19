@@ -1,0 +1,189 @@
+# yamllint disable rule:line-length
+# yamllint disable rule:braces
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  schedule:
+    # Run at noon JST (3:00 UTC) on the 15th of every month
+    - cron: '0 3 15 * *'
+
+jobs:
+  tests:
+    name: Tests with PHP ${{ matrix.php-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        php-version:
+          - '8.2'
+          - '8.3'
+          - '8.4'
+          - '8.5'
+          - 'latest'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          coverage: none
+          ini-values: opcache.enable_cli=1, opcache.jit=tracing, opcache.jit_buffer_size=64M
+          tools: composer:v2
+
+      - name: Cache dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/composer
+          key: composer-${{ matrix.php-version }}-${{ hashFiles('composer.*') }}
+          restore-keys: |
+            composer-${{ matrix.php-version }}-
+            composer-
+
+      - name: Remove non-test dependencies
+        run: |
+          composer remove --no-update --dev \
+              phpstan/phpstan infection/infection \
+              friendsofphp/php-cs-fixer php-coveralls/php-coveralls
+
+      - name: Install dependencies
+        uses: nick-fields/retry@v3
+        with:
+          timeout_seconds: 30
+          max_attempts: 3
+          retry_on: error
+          command: |
+            composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Execute tests
+        run: |
+          php vendor/bin/phpunit --group=default --display-deprecations
+
+  mt:
+    name: Mutation Testing
+    runs-on: ubuntu-latest
+
+    env:
+      PHP_VERSION: '8.4'
+      COMPOSER_ROOT_VERSION: '0.1.99'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup PHP with coverage
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: pcov
+          tools: composer:v2
+
+      - name: Cache dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/composer
+          key: composer-${{ env.PHP_VERSION }}-${{ hashFiles('composer.*') }}
+          restore-keys: |
+            composer-${{ env.PHP_VERSION }}-
+            composer-
+
+      - name: Install dependencies
+        run: |
+          composer remove --no-update --dev \
+              phpstan/phpstan friendsofphp/php-cs-fixer
+          composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Generate coverage
+        run: |
+          php vendor/bin/phpunit --coverage-xml=build/logs/coverage-xml --coverage-clover=build/logs/clover.xml --log-junit=build/logs/junit.xml
+
+      - name: Upload coverage to Coveralls
+        continue-on-error: true
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          php vendor/bin/php-coveralls -v
+
+      - name: Create opcache directory
+        run: mkdir -p /tmp/opcache
+
+      - name: Setup PHP for mutation testing
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: none
+          ini-values: opcache.enable_cli=1, opcache.file_cache=/tmp/opcache, opcache.file_cache_only=1
+          tools: composer:v2
+
+      - name: Run mutation testing
+        run: |
+          make ci-infection
+
+  static-analysis:
+    name: Static Analysis and Validation
+    runs-on: ubuntu-latest
+
+    env:
+      PHP_VERSION: '8.4'
+      COMPOSER_ROOT_VERSION: '7.99'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          coverage: none
+          ini-values: memory_limit=512M, opcache.enable_cli=1, opcache.jit=tracing, opcache.jit_buffer_size=64M
+          tools: composer:v2
+
+      - name: Cache dependencies
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/composer
+          key: composer-${{ env.PHP_VERSION }}-${{ hashFiles('composer.*') }}
+          restore-keys: |
+            composer-${{ env.PHP_VERSION }}-
+            composer-
+
+      - name: Restore PHP-CS-Fixer cache
+        uses: actions/cache@v5
+        with:
+          path: build/cache/.php_cs.cache
+          key: php-cs-fixer-${{ env.PHP_VERSION }}-${{ hashFiles('composer.*') }}
+          restore-keys: |
+            php-cs-fixer-${{ env.PHP_VERSION }}-
+            php-cs-fixer-
+
+      - name: Install dependencies
+        run: |
+          composer remove --no-update --dev infection/infection
+          composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Validate composer.json
+        run: |
+          make composer-validate
+
+      - name: Lint YAML files
+        run: |
+          make yamllint
+
+      - name: Check code style
+        run: |
+          make ci-cs
+
+      - name: Non-code tests
+        run: |
+          php vendor/bin/phpunit --group=documentation
+
+      - name: Static Analysis
+        run: |
+          make ci-phpstan --keep-going -j8 --output-sync

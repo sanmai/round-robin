@@ -1,0 +1,10 @@
+parameters:
+    reportUnmatchedIgnoredErrors: false
+    level: 4
+    paths:
+        - src
+        - tests
+    ignoreErrors:
+        -
+             identifier: sanmai.noNestedLoops
+             path: tests/
