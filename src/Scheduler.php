@@ -21,6 +21,7 @@ declare(strict_types=1);
 namespace RoundRobin;
 
 use Fiber;
+use function call_user_func;
 
 /**
  * @final
@@ -31,9 +32,14 @@ class Scheduler
     private array $fibers = [];
 
     /** @param Fiber<mixed, mixed, mixed, mixed> $fiber */
-    public function add(Fiber $fiber): void
+    public function add(Fiber|callable $fiber): void
     {
-        $this->fibers[] = $fiber;
+        if ($fiber instanceof Fiber) {
+            $this->fibers[] = $fiber;
+            return;
+        }
+
+        $this->fibers[] = new Fiber(call_user_func($fiber));
     }
 
     public function run(): void
