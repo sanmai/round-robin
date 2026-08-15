@@ -48,7 +48,8 @@ jobs:
         run: |
           composer remove --no-update --dev \
               phpstan/phpstan infection/infection \
-              friendsofphp/php-cs-fixer php-coveralls/php-coveralls
+              friendsofphp/php-cs-fixer php-coveralls/php-coveralls \
+              sanmai/phpstan-rules esi/phpunit-coverage-check
 
       - name: Install dependencies
         uses: nick-fields/retry@v4
