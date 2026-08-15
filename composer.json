@@ -14,7 +14,7 @@
     },
     "require-dev": {
         "ergebnis/composer-normalize": "^2.8",
-        "esi/phpunit-coverage-check": ">2",
+        "esi/phpunit-coverage-check": ">1",
         "friendsofphp/php-cs-fixer": "^3.17",
         "infection/infection": ">=0.32.3",
         "league/pipeline": "^0.3 || ^1.0",
