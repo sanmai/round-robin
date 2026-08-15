@@ -1,6 +1,6 @@
 # sanmai/round-robin
 
-A minimal, dependency-free round-robin scheduler for PHP Fibers.
+A minimal, dependency-free round-robin scheduler for PHP Fibers (available since PHP 8.1).
 
 A thin layer for cooperative multitasking:
 - no event loop

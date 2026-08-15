@@ -10,14 +10,13 @@
         }
     ],
     "require": {
-        "php": ">=8.2"
+        "php": ">=8.1"
     },
     "require-dev": {
         "ergebnis/composer-normalize": "^2.8",
         "esi/phpunit-coverage-check": ">2",
         "friendsofphp/php-cs-fixer": "^3.17",
         "infection/infection": ">=0.32.3",
-        "league/pipeline": "^0.3 || ^1.0",
         "php-coveralls/php-coveralls": "^2.4.1",
         "phpstan/extension-installer": "^1.4",
         "phpstan/phpstan": "^2",
